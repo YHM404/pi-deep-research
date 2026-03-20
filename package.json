@@ -1,0 +1,22 @@
+{
+  "name": "pi-deep-research",
+  "version": "0.1.0",
+  "description": "Deep research skill for pi — adaptive planning, multi-hop reasoning, confidence-driven iteration with web search tools",
+  "keywords": ["pi-package", "research", "web-search", "deep-research"],
+  "license": "MIT",
+  "author": "agiroad",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/czhiming-maker/pi-deep-research"
+  },
+  "homepage": "https://github.com/czhiming-maker/pi-deep-research#readme",
+  "pi": {
+    "skills": ["./"],
+    "prompts": ["./prompts"],
+    "extensions": ["./extension.ts"]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@sinclair/typebox": "*"
+  }
+}
