@@ -1,7 +1,3 @@
----
-description: "Deep web research skill for pi — structured search, reflection, and analysis with adaptive planning and confidence-driven iteration."
----
-
 # pi-deep-research
 
 **Deep research skill for [pi](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) — structured search, reflection, and analysis.**
