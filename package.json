@@ -1,7 +1,7 @@
 {
   "name": "pi-deep-research",
-  "version": "0.1.4",
-  "description": "Deep research skill for pi — adaptive planning, multi-hop reasoning, confidence-driven iteration with web search tools",
+  "version": "0.1.5",
+  "description": "Deep research skill for pi — structured search, reflection, and analysis.",
   "keywords": [
     "pi-package",
     "research",
