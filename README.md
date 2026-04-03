@@ -16,35 +16,35 @@ Produces a comprehensive Markdown research report with executive summary, cross-
 
 ### 1. Start a research task
 
-<img src="docs/start.png" alt="Start research with /research command" width="800">
+<img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/start.png" alt="Start research with /research command" width="800">
 
 ### 2. Review and approve the plan
 
 The agent presents sub-questions and search queries, then waits for your approval before spending API calls.
 
-<img src="docs/approve.png" alt="Plan approval with search queries" width="800">
+<img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/approve.png" alt="Plan approval with search queries" width="800">
 
 ### 3. Checkpoint: keep searching or proceed?
 
 After each search round, the `research_checkpoint` tool evaluates progress. Here it says 🔴 **CONTINUE** — confidence is too low and contradictions need resolving:
 
-<img src="docs/checkpoint1.png" alt="Checkpoint CONTINUE verdict" width="800">
+<img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/checkpoint1.png" alt="Checkpoint CONTINUE verdict" width="800">
 
 After more rounds, all criteria are met — 🟢 **PROCEED**:
 
-<img src="docs/checkpoint2.png" alt="Checkpoint PROCEED verdict" width="800">
+<img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/checkpoint2.png" alt="Checkpoint PROCEED verdict" width="800">
 
 ### 4. Research complete
 
 The agent generates a structured Markdown report with findings summary:
 
-<img src="docs/completed.png" alt="Research complete with findings table" width="800">
+<img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/completed.png" alt="Research complete with findings table" width="800">
 
 ### 5. Full report output
 
 A comprehensive research report with Executive Summary, Key Findings, cross-referenced analysis, and source citations:
 
-<img src="docs/markdown_result.png" alt="Markdown report with executive summary" width="800">
+<img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/markdown_result.png" alt="Markdown report with executive summary" width="800">
 
 ### 💡 Tips: Visual HTML report
 
@@ -56,9 +56,9 @@ pi install https://github.com/nicobailon/visual-explainer
 
 Then ask: `Turn this report into a visual HTML page`
 
-<img src="docs/html_result_1.png" alt="Visual HTML report — overview with key metrics" width="800">
+<img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/html_result_1.png" alt="Visual HTML report — overview with key metrics" width="800">
 
-<img src="docs/html_result_2.png" alt="Visual HTML report — framework cards and comparison matrix" width="800">
+<img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/html_result_2.png" alt="Visual HTML report — framework cards and comparison matrix" width="800">
 
 ## Why
 
