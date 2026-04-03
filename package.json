@@ -10,6 +10,15 @@
     "url": "https://github.com/czhiming-maker/pi-deep-research"
   },
   "homepage": "https://github.com/czhiming-maker/pi-deep-research#readme",
+  "files": [
+    "SKILL.md",
+    "extension.ts",
+    "prompts/",
+    "references/",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
   "pi": {
     "skills": ["./"],
     "prompts": ["./prompts"],
