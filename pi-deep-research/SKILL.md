@@ -7,7 +7,7 @@ description: >
 license: MIT
 metadata:
   author: agiroad
-  version: "0.1.0"
+  version: "0.2.0"
   based-on: SuperClaude DeepResearch v4.1.7
 ---
 
@@ -17,8 +17,8 @@ Conduct structured deep research with web search, multi-hop reasoning, and confi
 Uses `web_search` and `web_extract` tools registered by this package's extension.
 
 **Available tools:**
-- `web_search` — General web search (Tavily / Brave)
-- `web_extract` — Extract full content from a web page
+- `web_search` — General web search via a `web-search-max`-compatible backend
+- `web_extract` — Extract full content from a web page via the same backend
 
 ## Behavioral Mindset
 

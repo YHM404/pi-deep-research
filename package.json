@@ -1,7 +1,7 @@
 {
   "name": "pi-deep-research",
-  "version": "0.1.6",
-  "description": "Deep research skill for pi — structured search, reflection, and analysis.",
+  "version": "0.2.0",
+  "description": "Deep research skill for pi — structured research workflow backed by web-search-max.",
   "keywords": [
     "pi-package",
     "research",
@@ -12,9 +12,9 @@
   "author": "agiroad",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/czhiming-maker/pi-deep-research.git"
+    "url": "git+https://github.com/YHM404/pi-deep-research.git"
   },
-  "homepage": "https://github.com/czhiming-maker/pi-deep-research#readme",
+  "homepage": "https://github.com/YHM404/pi-deep-research#readme",
   "files": [
     "pi-deep-research/SKILL.md",
     "extension.ts",

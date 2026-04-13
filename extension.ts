@@ -1,20 +1,17 @@
 /**
  * Deep Research Extension — web_search + web_extract tools
  *
- * Provides LLM-callable tools for internet search and content extraction.
- * Supports Tavily API (primary) and Brave Search API (fallback).
+ * This fork is aligned with the user's existing web-search-max skill stack.
+ * It uses a Tavily-compatible reverse proxy exposed under /api/* and reads the
+ * API key from the `search_apikey` environment variable.
  *
  * Configuration via environment variables:
- *   TAVILY_API_KEY   — Tavily API key (free tier: 1000 req/month)
- *   BRAVE_API_KEY    — Brave Search API key (free tier: 2000 req/month)
- *
- * If neither key is set, falls back to a bash curl-based approach.
+ *   search_apikey            — full Tavily-compatible key used by web-search-max
+ *   WEB_SEARCH_MAX_BASE_URL  — optional proxy base URL (default: https://search.ligong.cyou)
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-
-// ─── Types ───
 
 interface SearchResult {
 	title: string;
@@ -33,12 +30,48 @@ interface ExtractResult {
 	wordCount: number;
 }
 
-// ─── Search Providers ───
+const DEFAULT_PROXY_BASE_URL = process.env.WEB_SEARCH_MAX_BASE_URL ?? "https://search.ligong.cyou";
 
-async function searchTavily(query: string, opts: { maxResults: number; searchDepth: string; includeDomains?: string[]; excludeDomains?: string[]; }): Promise<SearchResult[]> {
-	const apiKey = process.env.TAVILY_API_KEY;
-	if (!apiKey) throw new Error("TAVILY_API_KEY not set");
+function getSearchApiKey(): string {
+	const apiKey = process.env.search_apikey;
+	if (!apiKey) {
+		throw new Error(
+			"No web-search-max API key configured. Export search_apikey before using this package.\n" +
+			"  Example: export search_apikey=\"tvly-...\""
+		);
+	}
+	return apiKey;
+}
 
+async function proxyRequest<T>(path: string, body: Record<string, unknown>): Promise<T> {
+	const apiKey = getSearchApiKey();
+	const baseUrl = DEFAULT_PROXY_BASE_URL.replace(/\/$/, "");
+	const normalizedPath = path.startsWith("/api/") ? path : `/api${path.startsWith("/") ? path : `/${path}`}`;
+
+	const resp = await fetch(`${baseUrl}${normalizedPath}`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Accept: "application/json",
+			Authorization: `Bearer ${apiKey}`,
+		},
+		body: JSON.stringify(body),
+	});
+
+	if (!resp.ok) {
+		const text = await resp.text();
+		throw new Error(`web-search-max proxy error ${resp.status}: ${text}`);
+	}
+
+	return (await resp.json()) as T;
+}
+
+async function searchProxy(query: string, opts: {
+	maxResults: number;
+	searchDepth: string;
+	includeDomains?: string[];
+	excludeDomains?: string[];
+}): Promise<SearchResult[]> {
 	const body: Record<string, unknown> = {
 		query,
 		max_results: opts.maxResults,
@@ -48,131 +81,79 @@ async function searchTavily(query: string, opts: { maxResults: number; searchDep
 	if (opts.includeDomains?.length) body.include_domains = opts.includeDomains;
 	if (opts.excludeDomains?.length) body.exclude_domains = opts.excludeDomains;
 
-	const resp = await fetch("https://api.tavily.com/search", {
-		method: "POST",
-		headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-		body: JSON.stringify(body),
-	});
+	const data = await proxyRequest<{
+		results?: Array<{
+			title?: string;
+			url?: string;
+			content?: string;
+			raw_content?: string;
+			score?: number;
+			published_date?: string;
+		}>;
+	}>("/search", body);
 
-	if (!resp.ok) {
-		const text = await resp.text();
-		throw new Error(`Tavily API error ${resp.status}: ${text}`);
-	}
-
-	const data = (await resp.json()) as { results: Array<{ title: string; url: string; content: string; score: number; published_date?: string }> };
-	return data.results.map((r) => ({
-		title: r.title,
-		url: r.url,
-		snippet: r.content,
-		score: r.score,
-		publishedDate: r.published_date,
-	}));
+	return (data.results ?? [])
+		.filter((r) => r.url)
+		.map((r) => ({
+			title: r.title ?? r.url ?? "Untitled",
+			url: r.url!,
+			snippet: r.content ?? r.raw_content ?? "",
+			score: r.score,
+			publishedDate: r.published_date,
+		}));
 }
 
-async function searchBrave(query: string, opts: { maxResults: number }): Promise<SearchResult[]> {
-	const apiKey = process.env.BRAVE_API_KEY;
-	if (!apiKey) throw new Error("BRAVE_API_KEY not set");
-
-	const params = new URLSearchParams({ q: query, count: String(opts.maxResults) });
-	const resp = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
-		headers: { Accept: "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": apiKey },
-	});
-
-	if (!resp.ok) {
-		const text = await resp.text();
-		throw new Error(`Brave API error ${resp.status}: ${text}`);
-	}
-
-	const data = (await resp.json()) as { web?: { results: Array<{ title: string; url: string; description: string; age?: string }> } };
-	return (data.web?.results ?? []).map((r) => ({
-		title: r.title,
-		url: r.url,
-		snippet: r.description,
-		publishedDate: r.age,
-	}));
+async function doSearch(query: string, opts: {
+	maxResults: number;
+	searchDepth: string;
+	includeDomains?: string[];
+	excludeDomains?: string[];
+}): Promise<{ provider: string; results: SearchResult[] }> {
+	const results = await searchProxy(query, opts);
+	return { provider: "web-search-max", results };
 }
-
-async function doSearch(query: string, opts: { maxResults: number; searchDepth: string; includeDomains?: string[]; excludeDomains?: string[]; }): Promise<{ provider: string; results: SearchResult[] }> {
-	// Try Tavily first, then Brave
-	if (process.env.TAVILY_API_KEY) {
-		try {
-			const results = await searchTavily(query, opts);
-			return { provider: "tavily", results };
-		} catch (e) {
-			// Fall through to Brave
-		}
-	}
-	if (process.env.BRAVE_API_KEY) {
-		const results = await searchBrave(query, { maxResults: opts.maxResults });
-		return { provider: "brave", results };
-	}
-	throw new Error(
-		"No search API configured. Set TAVILY_API_KEY or BRAVE_API_KEY environment variable.\n" +
-		"  Tavily: https://tavily.com (free: 1000 req/month)\n" +
-		"  Brave:  https://brave.com/search/api/ (free: 2000 req/month)"
-	);
-}
-
-// ─── Content Extraction ───
 
 async function extractContent(url: string): Promise<ExtractResult> {
-	const resp = await fetch(url, {
-		headers: {
-			"User-Agent": "Mozilla/5.0 (compatible; PiDeepResearch/1.0)",
-			Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-		},
-		redirect: "follow",
-		signal: AbortSignal.timeout(15000),
-	});
+	const data = await proxyRequest<{
+		results?: Array<{
+			url?: string;
+			title?: string;
+			raw_content?: string;
+			content?: string;
+			author?: string;
+			published_date?: string;
+		}>;
+		failed_results?: Array<{ url?: string; error?: string }>;
+	}>("/extract", { urls: [url] });
 
-	if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);
-
-	const html = await resp.text();
-
-	// Simple content extraction — strip HTML tags, extract title and main content
-	// A production version would use @mozilla/readability or similar
-	const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/is);
-	const title = titleMatch?.[1]?.replace(/&[^;]+;/g, " ").trim() ?? "";
-
-	// Remove script, style, nav, header, footer tags
-	let content = html
-		.replace(/<script[\s\S]*?<\/script>/gi, "")
-		.replace(/<style[\s\S]*?<\/style>/gi, "")
-		.replace(/<nav[\s\S]*?<\/nav>/gi, "")
-		.replace(/<header[\s\S]*?<\/header>/gi, "")
-		.replace(/<footer[\s\S]*?<\/footer>/gi, "")
-		.replace(/<[^>]+>/g, " ")
-		.replace(/&nbsp;/g, " ")
-		.replace(/&[^;]+;/g, " ")
-		.replace(/\s+/g, " ")
-		.trim();
-
-	// Truncate to ~8000 words to avoid overwhelming the context
-	const words = content.split(/\s+/);
-	const wordCount = words.length;
-	if (words.length > 8000) {
-		content = words.slice(0, 8000).join(" ") + "\n\n[... truncated, total " + wordCount + " words]";
+	const result = data.results?.[0];
+	if (!result) {
+		const failure = data.failed_results?.find((item) => item.url === url) ?? data.failed_results?.[0];
+		throw new Error(failure?.error ?? `No extract result returned for ${url}`);
 	}
 
-	// Try to extract author from meta tags
-	const authorMatch = html.match(/<meta[^>]*name=["']author["'][^>]*content=["']([^"']+)["']/i);
-	const author = authorMatch?.[1];
+	const content = (result.raw_content ?? result.content ?? "").trim();
+	if (!content) {
+		throw new Error(`Extract response did not include readable content for ${url}`);
+	}
 
-	// Try to extract publish date
-	const dateMatch = html.match(/<meta[^>]*(?:property=["']article:published_time["']|name=["']date["'])[^>]*content=["']([^"']+)["']/i);
-	const publishedDate = dateMatch?.[1];
-
-	return { title, url, content, author, publishedDate, wordCount };
+	const wordCount = content.split(/\s+/).filter(Boolean).length;
+	return {
+		title: result.title ?? url,
+		url: result.url ?? url,
+		content,
+		author: result.author,
+		publishedDate: result.published_date,
+		wordCount,
+	};
 }
-
-// ─── Batch Search (parallel) ───
 
 async function batchSearch(queries: string[], opts: { maxResults: number; searchDepth: string }): Promise<{ provider: string; results: Record<string, SearchResult[]> }> {
 	const settled = await Promise.allSettled(
 		queries.map((q) => doSearch(q, { maxResults: opts.maxResults, searchDepth: opts.searchDepth }))
 	);
 
-	let provider = "unknown";
+	let provider = "web-search-max";
 	const results: Record<string, SearchResult[]> = {};
 	for (let i = 0; i < queries.length; i++) {
 		const s = settled[i];
@@ -186,17 +167,14 @@ async function batchSearch(queries: string[], opts: { maxResults: number; search
 	return { provider, results };
 }
 
-// ─── Extension Entry Point ───
-
 export default function (pi: ExtensionAPI) {
-	// ── Tool: web_search ──
 	pi.registerTool({
 		name: "web_search",
 		label: "Web Search",
 		description: [
 			"Search the web for information. Supports single query or batch queries (parallel).",
 			"Returns ranked results with title, URL, snippet, and relevance score.",
-			"Requires TAVILY_API_KEY or BRAVE_API_KEY environment variable.",
+			"Uses the existing web-search-max-compatible proxy and requires search_apikey.",
 		].join(" "),
 		parameters: Type.Object({
 			query: Type.Optional(Type.String({ description: "Single search query" })),
@@ -211,7 +189,7 @@ export default function (pi: ExtensionAPI) {
 			),
 			search_depth: Type.Optional(
 				Type.String({
-					description: '"basic" for speed, "advanced" for thoroughness (Tavily only)',
+					description: '"basic" for speed, "advanced" for thoroughness',
 					default: "basic",
 				})
 			),
@@ -227,7 +205,6 @@ export default function (pi: ExtensionAPI) {
 			const maxResults = Math.min(params.max_results ?? 5, 10);
 			const searchDepth = params.search_depth ?? "basic";
 
-			// Batch mode
 			if (params.queries && params.queries.length > 0) {
 				const { provider, results } = await batchSearch(params.queries, { maxResults, searchDepth });
 				const totalResults = Object.values(results).reduce((s, r) => s + r.length, 0);
@@ -246,7 +223,6 @@ export default function (pi: ExtensionAPI) {
 				return { content: [{ type: "text", text }] };
 			}
 
-			// Single mode
 			if (!params.query) {
 				return {
 					content: [{ type: "text", text: "Error: provide either `query` (string) or `queries` (array)." }],
@@ -273,13 +249,12 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// ── Tool: web_extract ──
 	pi.registerTool({
 		name: "web_extract",
 		label: "Web Extract",
 		description: [
 			"Extract the main text content from a web page URL.",
-			"Strips HTML, scripts, navigation, and returns clean text.",
+			"Reads content through the existing web-search-max-compatible /extract endpoint.",
 			"Use after web_search to read full content of promising results.",
 		].join(" "),
 		parameters: Type.Object({
@@ -305,10 +280,6 @@ export default function (pi: ExtensionAPI) {
 			}
 		},
 	});
-
-	// ── Tool: research_checkpoint ──
-	// Hard gate: LLM must call this after each search round.
-	// Code decides whether to continue searching or allow synthesis.
 
 	const DEPTH_THRESHOLDS: Record<string, {
 		minSearchRounds: number;
@@ -374,48 +345,40 @@ export default function (pi: ExtensionAPI) {
 			const lowConfidenceQuestions = params.sub_questions.filter(q => q.confidence < 40);
 			const medConfidenceQuestions = params.sub_questions.filter(q => q.confidence >= 40 && q.confidence < thresholds.confidenceThreshold);
 
-			// ── Evaluate ──
 			const issues: string[] = [];
 			let verdict: "CONTINUE" | "PROCEED" = "PROCEED";
 
-			// Rule 1: Haven't done minimum search rounds
 			if (params.round < thresholds.minSearchRounds) {
 				verdict = "CONTINUE";
 				issues.push(`⛔ Min search rounds not met: ${params.round}/${thresholds.minSearchRounds} rounds`);
 			}
 
-			// Rule 2: Not enough sources
 			if (params.total_sources < thresholds.minSources) {
 				verdict = "CONTINUE";
 				issues.push(`⛔ Not enough sources: ${params.total_sources}/${thresholds.minSources} sources`);
 			}
 
-			// Rule 3: Too many unanswered questions
 			if (answeredRatio < thresholds.minAnsweredRatio) {
 				verdict = "CONTINUE";
 				issues.push(`⛔ Answered ratio too low: ${answeredCount}/${totalQuestions} (${(answeredRatio * 100).toFixed(0)}% < ${(thresholds.minAnsweredRatio * 100).toFixed(0)}%)`);
 			}
 
-			// Rule 4: Average confidence below threshold
 			if (avgConfidence < thresholds.confidenceThreshold) {
 				verdict = "CONTINUE";
 				issues.push(`⛔ Average confidence too low: ${avgConfidence.toFixed(0)}% < ${thresholds.confidenceThreshold}%`);
 			}
 
-			// Rule 5: Any question with very low confidence
 			if (lowConfidenceQuestions.length > 0 && params.round < thresholds.maxSearchRounds) {
 				verdict = "CONTINUE";
 				const names = lowConfidenceQuestions.map(q => `"${q.question}" (${q.confidence}%)`).join(", ");
 				issues.push(`⛔ Low-confidence sub-questions (<40%): ${names}`);
 			}
 
-			// Rule 6: Unresolved contradictions
 			if (hasContradictions && params.round < thresholds.maxSearchRounds) {
 				verdict = "CONTINUE";
 				issues.push(`⚠️ Unresolved contradictions (${params.contradictions!.length}) — search for authoritative sources to verify`);
 			}
 
-			// Safety valve: don't exceed max rounds
 			if (params.round >= thresholds.maxSearchRounds) {
 				verdict = "PROCEED";
 				if (issues.length > 0) {
@@ -423,7 +386,6 @@ export default function (pi: ExtensionAPI) {
 				}
 			}
 
-			// ── Build response ──
 			const statusBar = `${"█".repeat(Math.round(avgConfidence / 5))}${"░".repeat(20 - Math.round(avgConfidence / 5))}`;
 
 			let text = `## Research Checkpoint — Round ${params.round}\n\n`;
@@ -465,9 +427,8 @@ export default function (pi: ExtensionAPI) {
 
 			if (verdict === "CONTINUE") {
 				text += `\n### 📋 Next Actions Required\n`;
-				text += `You MUST perform another search round addressing the issues above, then call \`research_checkpoint\` again.\n`;
+				text += "You MUST perform another search round addressing the issues above, then call `research_checkpoint` again.\n";
 
-				// Specific guidance
 				if (lowConfidenceQuestions.length > 0) {
 					text += `\n**Priority — Low confidence questions to focus on:**\n`;
 					for (const q of lowConfidenceQuestions) {
@@ -485,7 +446,7 @@ export default function (pi: ExtensionAPI) {
 				}
 			} else {
 				text += `\n### ✅ Ready to Synthesize\n`;
-				text += `All criteria met. Proceed to Phase 4 — write the research report.\n`;
+				text += "All criteria met. Proceed to Phase 4 — write the research report.\n";
 				if (params.gaps && params.gaps.length > 0) {
 					text += `Include the ${params.gaps.length} remaining gap(s) in the "Uncertainties & Gaps" section of the report.\n`;
 				}

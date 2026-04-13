@@ -1,6 +1,6 @@
 # pi-deep-research
 
-**Deep research skill for [pi](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) — structured search, reflection, and analysis.**
+**Deep research skill for [pi](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) — structured search, reflection, and analysis. This fork is wired to the existing `web-search-max` search stack instead of the original built-in Tavily/Brave provider layer.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
@@ -9,17 +9,17 @@ Instead of shallow search-and-summarize, it enforces structured methodology: pla
 ## Install
 
 ```bash
-pi install npm:pi-deep-research
+pi install https://github.com/YHM404/pi-deep-research
 ```
 
-Then set a search API key (at least one):
+Then configure the same environment used by the existing `web-search-max` skill:
 
 ```bash
-# Tavily (recommended, free: 1000 req/month)
-export TAVILY_API_KEY="tvly-..."
+# Required: full Tavily-compatible key already used by web-search-max
+export search_apikey="tvly-..."
 
-# Brave Search (alternative, free: 2000 req/month)
-export BRAVE_API_KEY="BSA..."
+# Optional: override the reverse-proxy base URL
+export WEB_SEARCH_MAX_BASE_URL="https://search.ligong.cyou"
 ```
 
 ## Usage
@@ -118,7 +118,8 @@ LLMs doing "research" typically search once, skim snippets, and produce a surfac
 2. **Code-enforced reflection** — a `research_checkpoint` tool that evaluates progress against hard thresholds (min rounds, min sources, confidence score) and returns CONTINUE/PROCEED verdicts the agent must obey
 3. **Multi-hop reasoning** — Entity Expansion, Temporal Progression, Conceptual Deepening, and Causal Chain patterns with concrete examples
 4. **Analytical writing** — anti-patterns ("Source A says X. Source B says Y." ❌) vs analytical style ("Evidence converges on X because..." ✅)
-5. **Human-in-the-Loop** — research plan must be approved before execution begins
+5. **Reuses an existing search stack** — this fork points `web_search` and `web_extract` at a `web-search-max`-compatible proxy instead of bundling a separate search-provider choice
+6. **Human-in-the-Loop** — research plan must be approved before execution begins
 
 ## How It Works
 
@@ -187,14 +188,14 @@ Sections include:
 
 ## Configuration
 
-### Search Providers
+### Search Backend
 
-| Provider | Env Variable | Free Tier |
-|----------|-------------|-----------|
-| [Tavily](https://tavily.com) (recommended) | `TAVILY_API_KEY` | 1000 req/month |
-| [Brave Search](https://brave.com/search/api/) | `BRAVE_API_KEY` | 2000 req/month |
+| Backend | Env Variable | Notes |
+|---------|--------------|-------|
+| `web-search-max` compatible proxy | `search_apikey` | Required. Uses `/api/search` and `/api/extract` on the configured reverse proxy. |
+| Optional proxy override | `WEB_SEARCH_MAX_BASE_URL` | Defaults to `https://search.ligong.cyou` |
 
-The extension tries Tavily first, falls back to Brave. If neither is set, it shows a helpful error.
+The extension now uses the same environment and Tavily-compatible proxy pattern as the existing `web-search-max` skill, so you do not need to maintain a separate Tavily/Brave configuration just for this package.
 
 ### Depth Defaults
 
