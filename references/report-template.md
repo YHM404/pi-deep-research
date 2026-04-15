@@ -2,11 +2,12 @@
 
 ## Output Format
 
-**The final research report MUST be a Markdown file**, saved to the project working directory.
+**The final research report MUST be a Markdown file**, saved to a **user-confirmed location**.
 
 **File naming**: `research_[topic]_[timestamp].md`
 - Example: `research_ai-coding-assistants_20260312.md`
-- Save to the current working directory, or `~/.agent/research/` if no project context
+- If the user confirms only a directory, save the file inside that directory using the filename pattern above
+- If the user does not specify a location, ask before researching; you may propose the current working directory, but do not assume it silently
 
 **CRITICAL BOUNDARY**: This is a RESEARCH REPORT ONLY — no implementation. Do not write code, make architectural decisions, or implement findings. The user decides next steps after reading the report.
 

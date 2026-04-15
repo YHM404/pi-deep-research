@@ -48,10 +48,11 @@ Only proceed after reading both files.
 
 ### Phase 1 — Understand & Plan
 
-Before searching, spend 30 seconds understanding the request:
+Before searching, spend 30 seconds understanding the request.
+If multiple required clarifications are missing (for example both **depth** and **save location**), ask for them in **one concise message** and wait.
 
 1. **Determine research depth — STRICT matching**:
-   - **Only** count as "user specified" if the user's message contains one of these **exact English keywords**: `quick`, `standard`, `deep`, `exhaustive`. 
+   - **Only** count as "user specified" if the user's message contains one of these **exact English keywords**: `quick`, `standard`, `deep`, `exhaustive`.
    - Natural language descriptions (e.g., "do a thorough investigation", "quick look") do **NOT** count as specifying a depth level.
    - If the user specified an exact keyword → use that depth, do not override.
    - If the user did NOT use an exact keyword → **always ask the user** which depth they want before proceeding. Present a concise choice:
@@ -59,27 +60,34 @@ Before searching, spend 30 seconds understanding the request:
      - `standard` — 3-6 searches, balanced (~5 min)
      - `deep` — 5-10 searches, thorough (~10 min)
      - `exhaustive` — 10-20 searches, comprehensive (~20 min)
-   - Wait for the user's reply before proceeding to step 2.
 
-2. **Classify the research type**:
+2. **Determine where the report will be saved — explicit user confirmation required**:
+   - The research output always ends as a Markdown file written to disk.
+   - Only count as "user specified" if the user gave an explicit path / folder / filename, or explicitly approved a proposed default location.
+   - If the user did NOT specify where to save the report, you **MUST ask before doing research work**.
+   - You may propose a default such as `./research_[topic]_[YYYYMMDD].md`, but you may **not** assume it silently.
+   - Wait for the user's reply before proceeding to step 3.
+
+3. **Classify the research type**:
    - `factual` — verifiable facts, dates, specs
    - `comparative` — comparing options, pros/cons
    - `exploratory` — open-ended investigation
    - `exhaustive` — comprehensive survey
 
-3. **Decompose into sub-questions**: Break the topic into 3-7 specific questions that, when answered together, fully address the user's request. Design sub-questions so they **build on each other** — later questions should deepen or cross-reference earlier ones.
+4. **Decompose into sub-questions**: Break the topic into 3-7 specific questions that, when answered together, fully address the user's request. Design sub-questions so they **build on each other** — later questions should deepen or cross-reference earlier ones.
 
-4. **Plan the search strategy**: For each sub-question, draft 1-2 search queries. Prefer specific queries over broad ones. Include domain-specific terms.
+5. **Plan the search strategy**: For each sub-question, draft 1-2 search queries. Prefer specific queries over broad ones. Include domain-specific terms.
 
-5. **Present the plan to the user and STOP**. Display:
+6. **Present the plan to the user and STOP**. Display:
    - Research depth & type
+   - Confirmed save location
    - Sub-questions list (showing how they connect)
    - Planned search queries
    - Estimated search count and time budget
 
-   Then ask: "Here is the research plan. Ready to proceed? You can: 1) Approve and start 2) Modify sub-questions 3) Change depth level 4) Add focus areas"
+   Then ask: "Here is the research plan. Ready to proceed? You can: 1) Approve and start 2) Modify sub-questions 3) Change depth level 4) Change save location 5) Add focus areas"
 
-   **Do NOT proceed to Phase 2 until the user explicitly approves.** 
+   **Do NOT proceed to Phase 2 until the user explicitly approves.**
    Short confirmations like "yes", "ok", "go", "start", "looks good" = approved.
    Any modification request = revise the plan and present again for approval.
    This is a hard gate — no exceptions.
@@ -183,8 +191,10 @@ The search-checkpoint loop works like this:
 
 **The report MUST be a Markdown file.** Follow the structure in `../references/report-template.md` exactly:
 1. Generate a complete `.md` file with ALL required sections (see depth table in report-template.md)
-2. Save to `research_[topic]_[YYYYMMDD].md` in the current working directory
-3. The report is a RESEARCH REPORT ONLY — do NOT implement findings, write code, or make system changes
+2. Save to the **user-confirmed** location
+3. If the user confirmed only a directory, use `research_[topic]_[YYYYMMDD].md` inside that directory
+4. If no save location has been confirmed yet, **STOP and ask the user before writing the file**
+5. The report is a RESEARCH REPORT ONLY — do NOT implement findings, write code, or make system changes
 
 **STOP AFTER THE REPORT.** The user decides next steps.
 

@@ -70,7 +70,7 @@ Produces a comprehensive Markdown research report with executive summary, cross-
 
 ### 2. Review and approve the plan
 
-The agent presents sub-questions and search queries, then waits for your approval before spending API calls.
+The agent first confirms where the final Markdown report should be saved (if you did not already specify it), then presents sub-questions and search queries, and waits for your approval before spending API calls.
 
 <img src="https://raw.githubusercontent.com/czhiming-maker/pi-deep-research/main/docs/approve.png" alt="Plan approval with search queries" width="800">
 
@@ -164,7 +164,8 @@ Safety valve: after max rounds, forces PROCEED and flags remaining gaps.
 
 ## Report Output
 
-Reports are saved as Markdown files: `research_[topic]_[YYYYMMDD].md`
+Reports are saved as Markdown files at a **user-confirmed location**.
+If you specify only a directory, the agent uses: `research_[topic]_[YYYYMMDD].md`
 
 Sections include:
 - **Executive Summary** — conclusion first, then evidence
